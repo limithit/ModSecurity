@@ -20,13 +20,32 @@
 #include "modsecurity/modsecurity.h"
 #include "modsecurity/transaction.h"
 #include "src/utils/string.h"
+#include <mysql.h>
+#include <stdio.h>
 
 namespace modsecurity {
 
 
 std::string RuleMessage::_details(const RuleMessage *rm) {
     std::string msg;
+    /*************/
+       MYSQL *conn_ptr;
+       MYSQL_RES *res_ptr;
+       MYSQL_ROW sqlrow;
+       conn_ptr = mysql_init(NULL);
+       if(mysql_real_connect(conn_ptr, "127.0.0.1", "root", "root",
+                                                        "audit_sec", 0, NULL, 0)){
+                    char value = 1;
+                    mysql_options(conn_ptr, MYSQL_OPT_RECONNECT, &value);
+           char update_mod[512];
+                    sprintf(update_mod, "update modsecurity set mod_id=1, clientip='%s', SecRule_id='%s', attack_type='%s' where mod_id=0", std::string(rm->m_serverIpAddress).c_str(), std::to_string(rm->m_ruleId).c_str(),  rm->m_message.c_str());
+                            mysql_query(conn_ptr, update_mod);
+       }
+       mysql_free_result(res_ptr);
+       mysql_close(conn_ptr);
+  
 
+    /************/
     msg.append(" [file \"" + std::string(rm->m_ruleFile) + "\"]");
     msg.append(" [line \"" + std::to_string(rm->m_ruleLine) + "\"]");
     msg.append(" [id \"" + std::to_string(rm->m_ruleId) + "\"]");
